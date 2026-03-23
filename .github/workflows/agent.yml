@@ -1,0 +1,33 @@
+name: Scheduled Reporter
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  models: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run agent
+        run: node agent.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          HEARTBEAT_TOKEN: ${{ secrets.HEARTBEAT_TOKEN }}
+          AGENT_NAME: ${{ secrets.AGENT_NAME }}
+      - name: Commit report
+        if: success()
+        run: |
+          git config user.name "agent-bot"
+          git config user.email "bot@blanxlait.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Report $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
